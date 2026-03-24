@@ -112,10 +112,45 @@ private:
   Component test_strings_container_;
 };
 
+class RegexContainer : public ComponentBase {
+public:
+  RegexContainer() {
+    input_regex_ = Input(&input_regex_string_, "Input Regex");
+    switch_captcha_button_ = Button(
+      "Switch Captcha",
+      [](){},
+      ButtonOption::Animated(Color::Blue)
+    );
+    Component regex_container = Container::Vertical({
+      input_regex_,
+      switch_captcha_button_,
+    });
+    Add(regex_container);
+  }
+  Element OnRender() override {
+    return vbox({
+      input_regex_->Render(),
+      text(regex_compile_result_),
+      switch_captcha_button_->Render(),
+    });
+  }
+  bool OnEvent(Event event) override {
+    return ComponentBase::OnEvent(event);
+  }
+  bool Focusable() const override {
+    return ComponentBase::Focusable();
+  }
+private:
+  std::string input_regex_string_;
+  Component input_regex_;
+  std::string regex_compile_result_ = "Compile Result";
+  Component switch_captcha_button_;
+};
+
 } // namespace retui
 
 int main() {
-  std::shared_ptr<retui::TestStringsContainer> app = std::make_shared<retui::TestStringsContainer>();
+  std::shared_ptr<retui::RegexContainer> app = std::make_shared<retui::RegexContainer>();
   auto screen = ftxui::ScreenInteractive::Fullscreen();
   screen.Loop(app);
 }
