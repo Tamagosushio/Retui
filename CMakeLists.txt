@@ -39,7 +39,10 @@ FetchContent_Declare(json
 FetchContent_MakeAvailable(json)
 
 # 実行可能ファイル
-add_executable(retui src/main.cpp)
+add_executable(retui
+  src/main.cpp
+  src/TuiController.cpp
+)
 
 # ライブラリのリンク
 target_link_libraries(retui
