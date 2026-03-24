@@ -147,10 +147,39 @@ private:
   Component switch_captcha_button_;
 };
 
+class TuiController : public ComponentBase {
+public:
+  TuiController() {
+    test_strings_container_ = std::make_shared<TestStringsContainer>();
+    regex_container_ = std::make_shared<RegexContainer>();
+    Component controller_container = Container::Horizontal({
+      test_strings_container_,
+      regex_container_,
+    });
+    Add(controller_container);
+  }
+  Element OnRender() override {
+    return hbox({
+      regex_container_->Render(),
+      separator(),
+      test_strings_container_->Render(),
+    });
+  }
+  bool OnEvent(Event event) override {
+    return ComponentBase::OnEvent(event);
+  }
+  bool Focusable() const override {
+    return ComponentBase::Focusable();
+  }
+private:
+  std::shared_ptr<TestStringsContainer> test_strings_container_;
+  std::shared_ptr<RegexContainer> regex_container_;
+};
+
 } // namespace retui
 
 int main() {
-  std::shared_ptr<retui::RegexContainer> app = std::make_shared<retui::RegexContainer>();
+  std::shared_ptr<retui::TuiController> app = std::make_shared<retui::TuiController>();
   auto screen = ftxui::ScreenInteractive::Fullscreen();
   screen.Loop(app);
 }
