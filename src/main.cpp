@@ -1,7 +1,13 @@
 #include "TuiController.hpp"
+#include "RegexMatcher.hpp"
 
 int main() {
-  std::shared_ptr<retui::TuiController> app = std::make_shared<retui::TuiController>();
-  auto screen = ftxui::ScreenInteractive::Fullscreen();
-  screen.Loop(app);
+  retui::RegexMatcher regex_matcher;
+  regex_matcher.Compile("^https?://([^/]+)(?:/([^?]*))?(?:\\?(.*))?$");
+  regex_matcher.Execute("https://www.google.com");
+  regex_matcher.DebugPrint();
+  regex_matcher.Execute("https://www.google.com/search");
+  regex_matcher.DebugPrint();
+  regex_matcher.Execute("https://www.google.com/search?q=test");
+  regex_matcher.DebugPrint();
 }

@@ -42,6 +42,7 @@ FetchContent_MakeAvailable(json)
 add_executable(retui
   src/main.cpp
   src/TuiController.cpp
+  src/RegexMatcher.cpp
 )
 
 # ライブラリのリンク
