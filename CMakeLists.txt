@@ -43,6 +43,7 @@ add_executable(retui
   src/main.cpp
   src/TuiController.cpp
   src/RegexMatcher.cpp
+  src/RetuiApp.cpp
 )
 
 # ライブラリのリンク

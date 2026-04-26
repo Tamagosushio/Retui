@@ -35,6 +35,15 @@ void RegexMatcher::Execute(const std::string& text) {
   }
 }
 
+MatchResult RegexMatcher::GetMatchResult() const {
+  return MatchResult{
+    .is_valid_regex = is_valid_,
+    .is_match = is_match_,
+    .error_message = error_message_,
+    .captured_groups = captured_groups_
+  };
+}
+
 std::vector<std::string> RegexMatcher::GetCapturedGroups() const {
   return captured_groups_;
 }

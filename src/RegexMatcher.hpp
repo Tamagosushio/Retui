@@ -2,15 +2,24 @@
 
 #include <string>
 #include <vector>
+#include <memory>
 
 #include <re2/re2.h>
 
 namespace retui {
 
+struct MatchResult {
+  bool is_valid_regex;
+  bool is_match;
+  std::string error_message;
+  std::vector<std::string> captured_groups;
+};
+
 class RegexMatcher {
 public:
   void Compile(const std::string& regex);
   void Execute(const std::string& text);
+  MatchResult GetMatchResult() const;
   std::vector<std::string> GetCapturedGroups() const;
   bool IsValid() const;
   bool IsMatch() const;
