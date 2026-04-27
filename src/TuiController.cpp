@@ -12,11 +12,11 @@ TestStringBox::TestStringBox(std::function<void(TestStringBox*)> on_change, std:
   InputOption option;
   option.on_change = [this, on_change]() { on_change(this); };
   input_box_ = Input(&test_string_, "Input Test String", option);
-  delete_button_ = Button(
-    "Del",
+  delete_button_ = Maybe(Button(
+    "   DEL   ",
     [this, on_delete]() { on_delete(this); },
     ButtonOption::Animated(Color::Red)
-  );
+  ), &can_delete_);
   Component internal_container = Container::Horizontal({
     input_box_,
     delete_button_,
@@ -25,29 +25,30 @@ TestStringBox::TestStringBox(std::function<void(TestStringBox*)> on_change, std:
 }
 
 Element TestStringBox::OnRender() {
-  std::string match_text;
-  if (!match_result_.is_valid_regex) match_text = "Invalid Regex";
-  else if (match_result_.is_match) match_text = "Matched!";
-  else match_text = "No Match";
+  Element match_status;
+  if (!match_result_.is_valid_regex) match_status = text("Invalid Regex") | color(Color::Red);
+  else if (match_result_.is_match) match_status = text("Matched!") | color(Color::Green) | bold;
+  else match_status = text("No Match") | color(Color::Yellow);
   Elements group_elements;
-  if (show_capture_details_) {
-    for (size_t i = 0; i < match_result_.captured_groups.size(); ++i) {
-      group_elements.push_back(text(std::to_string(i) + ": " + match_result_.captured_groups[i]));
-    }
-  } else {
-    if (match_result_.is_match) {
-      group_elements.push_back(text("Captured: " + std::to_string(match_result_.captured_groups.size())));
-    }
+  for (size_t i = 0; i < match_result_.captured_groups.size(); ++i) {
+    group_elements.push_back(text(std::to_string(i) + ": " + match_result_.captured_groups[i]));
   }
-  return hbox({
-    input_box_->Render() | flex,
-    separator(),
+  return window(text(title_), hbox({
     vbox({
-      text(match_text),
-      vbox(std::move(group_elements)),
-      delete_button_->Render(),
-    }),
-  }) | border;
+      filler(),
+      input_box_->Render() | border,
+      filler(),
+    }) | flex,
+    separator(),
+    text(" "),
+    vbox({
+      match_status,
+      vbox(std::move(group_elements)) | flex,
+    }) | size(WIDTH, GREATER_THAN, 20),
+    text(" "),
+    separator(),
+    delete_button_->Render() | center,
+  }));
 }
 
 bool TestStringBox::OnEvent(Event event) {
@@ -70,8 +71,12 @@ void TestStringBox::SetMatchResult(const MatchResult& result) {
   match_result_ = result;
 }
 
-void TestStringBox::SetShowCaptureDetails(bool show) {
-  show_capture_details_ = show;
+void TestStringBox::SetTitle(const std::string& title) {
+  title_ = title;
+}
+
+void TestStringBox::SetCanDelete(bool can_delete) {
+  can_delete_ = can_delete;
 }
 
 TestStringsContainer::TestStringsContainer(std::function<void(TestStringBox*)> on_box_change)
@@ -82,11 +87,9 @@ TestStringsContainer::TestStringsContainer(std::function<void(TestStringBox*)> o
 }
 
 Element TestStringsContainer::OnRender() {
-  return vbox({
-    text("Test Strings"),
-    separator(),
-    test_strings_container_->Render(),
-  }) | border;
+  return window(text(" Test Strings "),
+    test_strings_container_->Render() | yframe | yflex
+  );
 }
 
 bool TestStringsContainer::OnEvent(Event event) {
@@ -101,21 +104,14 @@ const std::vector<std::shared_ptr<TestStringBox>>& TestStringsContainer::GetBoxe
   return boxes_;
 }
 
-void TestStringsContainer::SetShowCaptureDetails(bool show) {
-  show_capture_details_ = show;
-  for (auto& box : boxes_) {
-    box->SetShowCaptureDetails(show);
-  }
-}
-
 void TestStringsContainer::AddBox() {
   std::shared_ptr<TestStringBox> box = std::make_shared<TestStringBox>(
     [this](TestStringBox* target) { AddNewOnConditioner(); on_box_change_(target); },
     [this](TestStringBox* target) { RemoveBox(target); }
   );
-  box->SetShowCaptureDetails(show_capture_details_);
   boxes_.push_back(box);
   test_strings_container_->Add(box);
+  UpdateBoxesState();
   on_box_change_(box.get());
 }
 
@@ -137,31 +133,44 @@ void TestStringsContainer::RemoveBox(TestStringBox* target) {
   }
   if (boxes_.empty()) {
     AddBox();
+  } else {
+    UpdateBoxesState();
   }
 }
 
-RegexContainer::RegexContainer(std::function<void(std::string)> on_regex_change, std::function<void()> on_toggle) {
+void TestStringsContainer::UpdateBoxesState() {
+  size_t total = boxes_.size();
+  for (size_t i = 0; i < total; ++i) {
+    boxes_[i]->SetTitle(" Test String " + std::to_string(i + 1) + "/" + std::to_string(total) + " ");
+    bool can_delete = !(i == total - 1 && boxes_[i]->IsEmpty());
+    boxes_[i]->SetCanDelete(can_delete);
+  }
+}
+
+RegexContainer::RegexContainer(std::function<void(std::string)> on_regex_change) {
   InputOption option;
   option.on_change = [this, on_regex_change]() { on_regex_change(input_regex_string_); };
   input_regex_ = Input(&input_regex_string_, "Input Regex", option);
-  switch_captcha_button_ = Button(
-    "Switch Display",
-    on_toggle,
-    ButtonOption::Animated(Color::Blue)
-  );
-  Component regex_container = Container::Vertical({
-    input_regex_,
-    switch_captcha_button_,
-  });
+  Component regex_container = Container::Vertical({ input_regex_ });
   Add(regex_container);
 }
 
 Element RegexContainer::OnRender() {
-  return vbox({
-    input_regex_->Render(),
-    text(regex_compile_result_),
-    switch_captcha_button_->Render(),
-  }) | border;
+  Element compile_status;
+  if (regex_compile_result_ == "Compile Result: Valid Regex") {
+    compile_status = text(regex_compile_result_) | color(Color::Green) | bold;
+  } else if (regex_compile_result_ != "Compile Result: None") {
+    compile_status = paragraph(regex_compile_result_) | color(Color::Red) | bold;
+  } else {
+    compile_status = text(regex_compile_result_);
+  }
+  return window(text(" Main Regex "), vbox({
+    text(" Expression: ") | bold,
+    input_regex_->Render() | border,
+    separatorEmpty(),
+    compile_status,
+    filler(),
+  }));
 }
 
 bool RegexContainer::OnEvent(Event event) {
@@ -182,8 +191,7 @@ TuiController::TuiController(RetuiApp* app) : app_(app) {
     [this](TestStringBox* box) { OnTestStringChange(box); }
   );
   regex_container_ = std::make_shared<RegexContainer>(
-    [this](std::string regex) { OnRegexChange(regex); },
-    [this]() { OnToggleDisplay(); }
+    [this](std::string regex) { OnRegexChange(regex); }
   );
   Component controller_container = Container::Horizontal({
     regex_container_,
@@ -194,13 +202,16 @@ TuiController::TuiController(RetuiApp* app) : app_(app) {
 
 Element TuiController::OnRender() {
   return hbox({
-    regex_container_->Render() | flex,
-    separator(),
+    regex_container_->Render() | size(WIDTH, EQUAL, 50),
     test_strings_container_->Render() | flex,
   });
 }
 
 bool TuiController::OnEvent(Event event) {
+  if (event == Event::AltH) event = Event::ArrowLeft;
+  else if (event == Event::AltJ) event = Event::ArrowDown;
+  else if (event == Event::AltK) event = Event::ArrowUp;
+  else if (event == Event::AltL) event = Event::ArrowRight;
   return ComponentBase::OnEvent(event);
 }
 
@@ -224,11 +235,6 @@ void TuiController::OnTestStringChange(TestStringBox* box) {
 void TuiController::EvaluateBox(TestStringBox* box) {
   app_->SetTestText(box->GetText());
   box->SetMatchResult(app_->GetMatchResult());
-}
-
-void TuiController::OnToggleDisplay() {
-  show_capture_details_ = !show_capture_details_;
-  test_strings_container_->SetShowCaptureDetails(show_capture_details_);
 }
 
 } // namespace retui
