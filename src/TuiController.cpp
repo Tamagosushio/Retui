@@ -33,7 +33,10 @@ Element TestStringBox::OnRender() {
   for (size_t i = 0; i < match_result_.captured_groups.size(); ++i) {
     group_elements.push_back(text(std::to_string(i) + ": " + match_result_.captured_groups[i]));
   }
-  return window(text(title_), hbox({
+  Color border_color = Focused() ? Color(Color::Cyan1) : Color(Color::White);
+  BorderStyle border_style = Focused() ? HEAVY : LIGHT;
+  Decorator title_style = Focused() ? bold : nothing;
+  return window(text(title_) | title_style, hbox({
     vbox({
       filler(),
       input_box_->Render() | border,
@@ -48,7 +51,7 @@ Element TestStringBox::OnRender() {
     text(" "),
     separator(),
     delete_button_->Render() | center,
-  }));
+  }) | color(Color::White), border_style) | color(border_color);
 }
 
 bool TestStringBox::OnEvent(Event event) {
@@ -164,13 +167,16 @@ Element RegexContainer::OnRender() {
   } else {
     compile_status = text(regex_compile_result_);
   }
-  return window(text(" Main Regex "), vbox({
+  Color border_color = Focused() ? Color(Color::Cyan1) : Color(Color::White);
+  BorderStyle border_style = Focused() ? HEAVY : LIGHT;
+  Decorator title_style = Focused() ? bold : nothing;
+  return window(text(" Main Regex ") | title_style, vbox({
     text(" Expression: ") | bold,
     input_regex_->Render() | border,
     separatorEmpty(),
     compile_status,
     filler(),
-  }));
+  }) | color(Color::White), border_style) | color(border_color);
 }
 
 bool RegexContainer::OnEvent(Event event) {
