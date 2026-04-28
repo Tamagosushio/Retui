@@ -91,7 +91,7 @@ TestStringsContainer::TestStringsContainer(std::function<void(TestStringBox*)> o
 
 Element TestStringsContainer::OnRender() {
   return window(text(" Test Strings "),
-    test_strings_container_->Render() | yframe | yflex
+    test_strings_container_->Render() | vscroll_indicator | yframe | yflex
   );
 }
 
@@ -209,6 +209,7 @@ TuiController::TuiController(RetuiApp* app) : app_(app) {
 Element TuiController::OnRender() {
   return hbox({
     regex_container_->Render() | size(WIDTH, EQUAL, 50),
+    separator(),
     test_strings_container_->Render() | flex,
   });
 }
