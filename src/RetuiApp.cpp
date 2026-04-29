@@ -1,4 +1,5 @@
 #include "RetuiApp.hpp"
+#include "ClipboardManager.hpp"
 
 namespace retui {
 
@@ -17,6 +18,10 @@ void RetuiApp::SetTestText(const std::string& text) {
 
 MatchResult RetuiApp::GetMatchResult() const {
   return regex_matcher_.GetMatchResult();
+}
+
+bool RetuiApp::CopyToClipboard(const std::string& text) const {
+  return ClipboardManager::CopyToClipboard(text);
 }
 
 } // namespace retui

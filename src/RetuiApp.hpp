@@ -12,6 +12,7 @@ public:
   void SetMainRegex(const std::string& regex);
   void SetTestText(const std::string& text);
   MatchResult GetMatchResult() const;
+  bool CopyToClipboard(const std::string& text) const;
 
 private:
   std::string main_regex_;

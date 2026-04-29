@@ -62,6 +62,10 @@ bool TestStringBox::Focusable() const {
   return ComponentBase::Focusable();
 }
 
+bool TestStringBox::IsInputFocused() const {
+  return input_box_->Focused();
+}
+
 bool TestStringBox::IsEmpty() const {
   return test_string_.empty();
 }
@@ -187,6 +191,14 @@ bool RegexContainer::Focusable() const {
   return ComponentBase::Focusable();
 }
 
+bool RegexContainer::IsInputFocused() const {
+  return input_regex_->Focused();
+}
+
+std::string RegexContainer::GetText() const {
+  return input_regex_string_;
+}
+
 void RegexContainer::SetError(const std::string& error) {
   if (error.empty()) regex_compile_result_ = "Compile Result: Valid Regex";
   else regex_compile_result_ = "Compile Result: " + error;
@@ -199,18 +211,34 @@ TuiController::TuiController(RetuiApp* app) : app_(app) {
   regex_container_ = std::make_shared<RegexContainer>(
     [this](std::string regex) { OnRegexChange(regex); }
   );
-  Component controller_container = Container::Horizontal({
-    regex_container_,
-    test_strings_container_,
+  copy_button_ = Button(
+    " Copy to Clipboard (Alt+C) ",
+    [this]() { ExecuteCopy(); },
+    ButtonOption::Animated(Color::Cyan)
+  );
+  Component controller_container = Container::Vertical({
+    Container::Horizontal({
+      regex_container_,
+      test_strings_container_,
+    }),
+    copy_button_,
   });
   Add(controller_container);
 }
 
 Element TuiController::OnRender() {
-  return hbox({
-    regex_container_->Render() | size(WIDTH, EQUAL, 50),
+  return vbox({
+    hbox({
+      regex_container_->Render() | size(WIDTH, EQUAL, 50),
+      separator(),
+      test_strings_container_->Render() | flex,
+    }) | flex,
     separator(),
-    test_strings_container_->Render() | flex,
+    hbox({
+      text(status_message_) | color(status_message_color_),
+      filler(),
+      copy_button_->Render(),
+    }),
   });
 }
 
@@ -219,6 +247,10 @@ bool TuiController::OnEvent(Event event) {
   else if (event == Event::AltJ) event = Event::ArrowDown;
   else if (event == Event::AltK) event = Event::ArrowUp;
   else if (event == Event::AltL) event = Event::ArrowRight;
+  else if (event == Event::AltC) {
+    ExecuteCopy();
+    return true;
+  }
   return ComponentBase::OnEvent(event);
 }
 
@@ -242,6 +274,37 @@ void TuiController::OnTestStringChange(TestStringBox* box) {
 void TuiController::EvaluateBox(TestStringBox* box) {
   app_->SetTestText(box->GetText());
   box->SetMatchResult(app_->GetMatchResult());
+}
+
+std::string TuiController::GetFocusedText() const {
+  if (regex_container_->IsInputFocused()) {
+    return regex_container_->GetText();
+  }
+  for (const auto& box : test_strings_container_->GetBoxes()) {
+    if (box->IsInputFocused()) {
+      return box->GetText();
+    }
+  }
+  return "";
+}
+
+void TuiController::ExecuteCopy() {
+  std::string text_to_copy = GetFocusedText();
+  if (text_to_copy.empty()) {
+    ShowMessage(" No text selected to copy ", Color::Yellow);
+    return;
+  }
+  bool success = app_->CopyToClipboard(text_to_copy);
+  if (success) {
+    ShowMessage(" Copied to clipboard: " + text_to_copy + " ", Color::Green);
+  } else {
+    ShowMessage(" Failed to copy ", Color::Red);
+  }
+}
+
+void TuiController::ShowMessage(const std::string& text, Color color) {
+  status_message_ = text;
+  status_message_color_ = color;
 }
 
 } // namespace retui

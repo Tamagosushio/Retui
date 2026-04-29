@@ -25,6 +25,7 @@ public:
   bool OnEvent(Event event) override;
   bool Focusable() const override;
   bool IsEmpty() const;
+  bool IsInputFocused() const;
   std::string GetText() const;
   void SetMatchResult(const MatchResult& result);
   void SetTitle(const std::string& title);
@@ -62,6 +63,8 @@ public:
   Element OnRender() override;
   bool OnEvent(Event event) override;
   bool Focusable() const override;
+  bool IsInputFocused() const;
+  std::string GetText() const;
   void SetError(const std::string& error);
 private:
   std::string input_regex_string_;
@@ -79,9 +82,15 @@ private:
   void OnRegexChange(std::string regex);
   void OnTestStringChange(TestStringBox* box);
   void EvaluateBox(TestStringBox* box);
+  std::string GetFocusedText() const;
+  void ExecuteCopy();
+  void ShowMessage(const std::string& text, Color color = Color::White);
   RetuiApp* app_;
   std::shared_ptr<TestStringsContainer> test_strings_container_;
   std::shared_ptr<RegexContainer> regex_container_;
+  Component copy_button_;
+  std::string status_message_ = "";
+  Color status_message_color_ = Color::White;
 };
 
 } // namespace retui
