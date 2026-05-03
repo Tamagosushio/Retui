@@ -45,6 +45,7 @@ add_executable(retui
   src/RegexMatcher.cpp
   src/RetuiApp.cpp
   src/ClipboardManager.cpp
+  src/AppState.cpp
 )
 
 # ライブラリのリンク

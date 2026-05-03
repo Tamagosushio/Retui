@@ -24,4 +24,18 @@ bool RetuiApp::CopyToClipboard(const std::string& text) const {
   return ClipboardManager::CopyToClipboard(text);
 }
 
+void RetuiApp::LoadState(const std::string& filepath) {
+  app_state_.Load(filepath);
+}
+
+void RetuiApp::SaveState(const std::string& main_regex, const std::vector<std::string>& test_strings) {
+  app_state_.SetMainRegex(main_regex);
+  app_state_.SetTestStrings(test_strings);
+  app_state_.Save();
+}
+
+void RetuiApp::ResetState() {
+  app_state_.Reset();
+}
+
 } // namespace retui

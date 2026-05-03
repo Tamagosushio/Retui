@@ -27,6 +27,7 @@ public:
   bool IsEmpty() const;
   bool IsInputFocused() const;
   std::string GetText() const;
+  void SetText(const std::string& text);
   void SetMatchResult(const MatchResult& result);
   void SetTitle(const std::string& title);
   void SetCanDelete(bool can_delete);
@@ -47,6 +48,7 @@ public:
   bool OnEvent(Event event) override;
   bool Focusable() const override;
   const std::vector<std::shared_ptr<TestStringBox>>& GetBoxes() const;
+  void InitWithTexts(const std::vector<std::string>& texts);
 private:
   void AddBox();
   void AddNewOnConditioner();
@@ -65,6 +67,7 @@ public:
   bool Focusable() const override;
   bool IsInputFocused() const;
   std::string GetText() const;
+  void SetText(const std::string& text);
   void SetError(const std::string& error);
 private:
   std::string input_regex_string_;
@@ -75,9 +78,11 @@ private:
 class TuiController : public ComponentBase {
 public:
   explicit TuiController(RetuiApp* app);
-  Element OnRender() override;
   bool OnEvent(Event event) override;
   bool Focusable() const override;
+  std::string GetMainRegexText() const;
+  std::vector<std::string> GetAllTestStrings() const;
+
 private:
   void OnRegexChange(std::string regex);
   void OnTestStringChange(TestStringBox* box);
@@ -85,10 +90,14 @@ private:
   std::string GetFocusedText() const;
   void ExecuteCopy();
   void ShowMessage(const std::string& text, Color color = Color::White);
+  void ExecuteReset();
   RetuiApp* app_;
   std::shared_ptr<TestStringsContainer> test_strings_container_;
   std::shared_ptr<RegexContainer> regex_container_;
   Component copy_button_;
+  Component reset_button_;
+  bool show_reset_modal_ = false;
+  Component reset_modal_component_;
   std::string status_message_ = "";
   Color status_message_color_ = Color::White;
 };

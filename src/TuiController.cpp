@@ -74,6 +74,10 @@ std::string TestStringBox::GetText() const {
   return test_string_;
 }
 
+void TestStringBox::SetText(const std::string& text) {
+  test_string_ = text;
+}
+
 void TestStringBox::SetMatchResult(const MatchResult& result) {
   match_result_ = result;
 }
@@ -120,6 +124,30 @@ void TestStringsContainer::AddBox() {
   test_strings_container_->Add(box);
   UpdateBoxesState();
   on_box_change_(box.get());
+}
+
+void TestStringsContainer::InitWithTexts(const std::vector<std::string>& texts) {
+  for (auto& box : boxes_) {
+    box->Detach();
+  }
+  boxes_.clear();
+  if (texts.empty()) {
+    AddBox();
+    return;
+  }
+  for (const auto& text : texts) {
+    std::shared_ptr<TestStringBox> box = std::make_shared<TestStringBox>(
+      [this](TestStringBox* target) { AddNewOnConditioner(); on_box_change_(target); },
+      [this](TestStringBox* target) { RemoveBox(target); }
+    );
+    box->SetText(text);
+    boxes_.push_back(box);
+    test_strings_container_->Add(box);
+  }
+  UpdateBoxesState();
+  if (!boxes_.empty() && !boxes_.back()->IsEmpty()) {
+    AddBox();
+  }
 }
 
 void TestStringsContainer::AddNewOnConditioner() {
@@ -199,6 +227,10 @@ std::string RegexContainer::GetText() const {
   return input_regex_string_;
 }
 
+void RegexContainer::SetText(const std::string& text) {
+  input_regex_string_ = text;
+}
+
 void RegexContainer::SetError(const std::string& error) {
   if (error.empty()) regex_compile_result_ = "Compile Result: Valid Regex";
   else regex_compile_result_ = "Compile Result: " + error;
@@ -216,30 +248,68 @@ TuiController::TuiController(RetuiApp* app) : app_(app) {
     [this]() { ExecuteCopy(); },
     ButtonOption::Animated(Color::Cyan)
   );
-  Component controller_container = Container::Vertical({
+  reset_button_ = Button(
+    " Reset ",
+    [this]() { show_reset_modal_ = true; },
+    ButtonOption::Animated(Color::RedLight)
+  );
+  const auto& app_state = app_->GetAppState();
+  regex_container_->SetText(app_state.GetMainRegex());
+  OnRegexChange(app_state.GetMainRegex());
+  test_strings_container_->InitWithTexts(app_state.GetTestStrings());
+  for (const auto& box : test_strings_container_->GetBoxes()) {
+    EvaluateBox(box.get());
+  }
+  auto container = Container::Vertical({
     Container::Horizontal({
       regex_container_,
       test_strings_container_,
     }),
-    copy_button_,
+    Container::Horizontal({
+      copy_button_,
+      reset_button_
+    })
   });
-  Add(controller_container);
-}
-
-Element TuiController::OnRender() {
-  return vbox({
-    hbox({
-      regex_container_->Render() | size(WIDTH, EQUAL, 50),
+  auto main_layout = Renderer(container, [this] {
+    return vbox({
+      hbox({
+        regex_container_->Render() | size(WIDTH, EQUAL, 50),
+        separator(),
+        test_strings_container_->Render() | flex,
+      }) | flex,
       separator(),
-      test_strings_container_->Render() | flex,
-    }) | flex,
-    separator(),
-    hbox({
-      text(status_message_) | color(status_message_color_),
-      filler(),
-      copy_button_->Render(),
-    }),
+      hbox({
+        text(status_message_) | color(status_message_color_),
+        filler(),
+        copy_button_->Render(),
+        text(" "),
+        reset_button_->Render(),
+      }),
+    });
   });
+  auto modal_component = Container::Vertical({
+    Button("Yes, Reset", [this] {
+      ExecuteReset();
+      show_reset_modal_ = false;
+    }, ButtonOption::Animated(Color::Red)),
+    Button("Cancel", [this] { show_reset_modal_ = false; }, ButtonOption::Animated(Color::Blue)),
+  });
+  reset_modal_component_ = Renderer(modal_component, [modal_component] {
+    return window(text(" Confirm Reset ") | bold | color(Color::RedLight),
+      vbox({
+        text("Are you sure you want to reset all state?"),
+        text("This will delete retui.json."),
+        separator(),
+        hbox({
+          filler(),
+          modal_component->Render(),
+          filler()
+        })
+      })
+    ) | clear_under | center;
+  });
+  main_layout |= Modal(reset_modal_component_, &show_reset_modal_);
+  Add(main_layout);
 }
 
 bool TuiController::OnEvent(Event event) {
@@ -305,6 +375,28 @@ void TuiController::ExecuteCopy() {
 void TuiController::ShowMessage(const std::string& text, Color color) {
   status_message_ = text;
   status_message_color_ = color;
+}
+
+std::string TuiController::GetMainRegexText() const {
+  return regex_container_->GetText();
+}
+
+std::vector<std::string> TuiController::GetAllTestStrings() const {
+  std::vector<std::string> texts;
+  for (const auto& box : test_strings_container_->GetBoxes()) {
+    if (!box->IsEmpty()) {
+      texts.push_back(box->GetText());
+    }
+  }
+  return texts;
+}
+
+void TuiController::ExecuteReset() {
+  app_->ResetState();
+  regex_container_->SetText("");
+  regex_container_->SetError("");
+  test_strings_container_->InitWithTexts({});
+  ShowMessage(" State reset successfully ", Color::Green);
 }
 
 } // namespace retui
