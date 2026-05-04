@@ -12,6 +12,7 @@
 #include <ftxui/dom/elements.hpp>
 
 #include "RetuiApp.hpp"
+#include "AppState.hpp"
 
 namespace retui {
 
@@ -77,7 +78,7 @@ private:
 
 class TuiController : public ComponentBase {
 public:
-  explicit TuiController(RetuiApp* app);
+  explicit TuiController(RetuiApp* app, AppState* app_state);
   bool OnEvent(Event event) override;
   bool Focusable() const override;
   std::string GetMainRegexText() const;
@@ -92,6 +93,7 @@ private:
   void ShowMessage(const std::string& text, Color color = Color::White);
   void ExecuteReset();
   RetuiApp* app_;
+  AppState* app_state_;
   std::shared_ptr<TestStringsContainer> test_strings_container_;
   std::shared_ptr<RegexContainer> regex_container_;
   Component copy_button_;

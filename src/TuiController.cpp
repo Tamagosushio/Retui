@@ -1,5 +1,7 @@
 #include "TuiController.hpp"
-
+#include "ResetModal.hpp"
+#include "ClipboardManager.hpp"
+#include <iostream>
 namespace retui {
 
 using namespace ftxui;
@@ -236,7 +238,7 @@ void RegexContainer::SetError(const std::string& error) {
   else regex_compile_result_ = "Compile Result: " + error;
 }
 
-TuiController::TuiController(RetuiApp* app) : app_(app) {
+TuiController::TuiController(RetuiApp* app, AppState* app_state) : app_(app), app_state_(app_state) {
   test_strings_container_ = std::make_shared<TestStringsContainer>(
     [this](TestStringBox* box) { OnTestStringChange(box); }
   );
@@ -253,10 +255,9 @@ TuiController::TuiController(RetuiApp* app) : app_(app) {
     [this]() { show_reset_modal_ = true; },
     ButtonOption::Animated(Color::RedLight)
   );
-  const auto& app_state = app_->GetAppState();
-  regex_container_->SetText(app_state.GetMainRegex());
-  OnRegexChange(app_state.GetMainRegex());
-  test_strings_container_->InitWithTexts(app_state.GetTestStrings());
+  regex_container_->SetText(app_state_->GetMainRegex());
+  OnRegexChange(app_state_->GetMainRegex());
+  test_strings_container_->InitWithTexts(app_state_->GetTestStrings());
   for (const auto& box : test_strings_container_->GetBoxes()) {
     EvaluateBox(box.get());
   }
@@ -287,27 +288,13 @@ TuiController::TuiController(RetuiApp* app) : app_(app) {
       }),
     });
   });
-  auto modal_component = Container::Vertical({
-    Button("Yes, Reset", [this] {
+  reset_modal_component_ = std::make_shared<ResetModal>(
+    [this] {
       ExecuteReset();
       show_reset_modal_ = false;
-    }, ButtonOption::Animated(Color::Red)),
-    Button("Cancel", [this] { show_reset_modal_ = false; }, ButtonOption::Animated(Color::Blue)),
-  });
-  reset_modal_component_ = Renderer(modal_component, [modal_component] {
-    return window(text(" Confirm Reset ") | bold | color(Color::RedLight),
-      vbox({
-        text("Are you sure you want to reset all state?"),
-        text("This will delete retui.json."),
-        separator(),
-        hbox({
-          filler(),
-          modal_component->Render(),
-          filler()
-        })
-      })
-    ) | clear_under | center;
-  });
+    },
+    [this] { show_reset_modal_ = false; }
+  );
   main_layout |= Modal(reset_modal_component_, &show_reset_modal_);
   Add(main_layout);
 }
@@ -329,11 +316,30 @@ bool TuiController::Focusable() const {
 }
 
 void TuiController::OnRegexChange(std::string regex) {
-  app_->SetMainRegex(regex);
-  auto result = app_->GetMatchResult();
-  regex_container_->SetError(result.error_message);
-  for (const auto& box : test_strings_container_->GetBoxes()) {
-    EvaluateBox(box.get());
+  if (test_strings_container_) {
+    const auto& boxes = test_strings_container_->GetBoxes();
+    if (boxes.empty()) {
+      auto result = app_->Evaluate(regex, "");
+      if (regex_container_) regex_container_->SetError(result.error_message);
+      return;
+    }
+    std::vector<std::string> texts;
+    texts.reserve(boxes.size());
+    for (const auto& box : boxes) {
+      texts.push_back(box->GetText());
+    }
+    auto results = app_->EvaluateMultiple(regex, texts);
+    if (regex_container_) {
+      regex_container_->SetError(results[0].error_message);
+    }
+    for (size_t i = 0; i < boxes.size(); ++i) {
+      boxes[i]->SetMatchResult(results[i]);
+    }
+  } else {
+    auto result = app_->Evaluate(regex, "");
+    if (regex_container_) {
+      regex_container_->SetError(result.error_message);
+    }
   }
 }
 
@@ -342,8 +348,9 @@ void TuiController::OnTestStringChange(TestStringBox* box) {
 }
 
 void TuiController::EvaluateBox(TestStringBox* box) {
-  app_->SetTestText(box->GetText());
-  box->SetMatchResult(app_->GetMatchResult());
+  if (!regex_container_) return;
+  auto result = app_->Evaluate(regex_container_->GetText(), box->GetText());
+  box->SetMatchResult(result);
 }
 
 std::string TuiController::GetFocusedText() const {
@@ -364,7 +371,7 @@ void TuiController::ExecuteCopy() {
     ShowMessage(" No text selected to copy ", Color::Yellow);
     return;
   }
-  bool success = app_->CopyToClipboard(text_to_copy);
+  bool success = ClipboardManager::CopyToClipboard(text_to_copy);
   if (success) {
     ShowMessage(" Copied to clipboard: " + text_to_copy + " ", Color::Green);
   } else {
@@ -392,7 +399,7 @@ std::vector<std::string> TuiController::GetAllTestStrings() const {
 }
 
 void TuiController::ExecuteReset() {
-  app_->ResetState();
+  app_state_->Reset();
   regex_container_->SetText("");
   regex_container_->SetError("");
   test_strings_container_->InitWithTexts({});
