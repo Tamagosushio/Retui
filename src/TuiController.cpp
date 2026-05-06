@@ -1,6 +1,7 @@
 #include "TuiController.hpp"
 #include "ResetModal.hpp"
 #include "ClipboardManager.hpp"
+#include "UIUtils.hpp"
 #include <iostream>
 namespace retui {
 
@@ -100,8 +101,9 @@ TestStringsContainer::TestStringsContainer(std::function<void(TestStringBox*)> o
 }
 
 Element TestStringsContainer::OnRender() {
-  return window(text(" Test Strings "),
-    test_strings_container_->Render() | vscroll_indicator | yframe | yflex
+  return FocusedWindow(" Test Strings ",
+    test_strings_container_->Render() | vscroll_indicator | yframe | yflex,
+    Focused()
   );
 }
 
@@ -201,21 +203,18 @@ Element RegexContainer::OnRender() {
   } else {
     compile_status = text(regex_compile_result_);
   }
-  Color border_color = Focused() ? Color(Color::Cyan1) : Color(Color::White);
-  BorderStyle border_style = Focused() ? HEAVY : LIGHT;
-  Decorator title_style = Focused() ? bold : nothing;
-  auto expanded_view = expanded_regex_.empty() ? text("") : vbox({
-    text(" Expanded: ") | bold,
-    paragraph(expanded_regex_) | color(Color::GrayDark),
+  auto expanded_view = (expanded_regex_.empty() || expanded_regex_ == input_regex_string_) ? text("") : vbox({
+    text(" Expanded: ") | bold | color(Color::Cyan),
+    paragraph(expanded_regex_) | color(Color::White) | borderRounded,
     separatorEmpty(),
   });
-  return window(text(" Main Regex ") | title_style, vbox({
+  return FocusedWindow(" Main Regex ", vbox({
     text(" Expression: ") | bold,
     input_regex_->Render() | border,
     separatorEmpty(),
     expanded_view,
     compile_status,
-  }) | color(Color::White), border_style) | color(border_color);
+  }), Focused());
 }
 
 bool RegexContainer::OnEvent(Event event) {
@@ -302,7 +301,7 @@ TuiController::TuiController(RetuiApp* app, AppState* app_state) : app_(app), ap
         vbox({
           regex_container_->Render(),
           variables_container_->Render() | flex,
-        }) | size(WIDTH, EQUAL, 50),
+        }) | flex,
         separator(),
         test_strings_container_->Render() | flex,
       }) | flex,

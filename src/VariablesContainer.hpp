@@ -20,6 +20,8 @@ public:
   std::string GetValue() const { return value_; }
   void SetName(const std::string& name) { name_ = name; }
   void SetValue(const std::string& value) { value_ = value; }
+  void SetTitle(const std::string& title) { title_ = title; }
+  void SetCanDelete(bool can_delete) { can_delete_ = can_delete; }
 
 private:
   std::string name_;
@@ -27,6 +29,8 @@ private:
   ftxui::Component input_name_;
   ftxui::Component input_value_;
   ftxui::Component delete_button_;
+  std::string title_ = " Variable ";
+  bool can_delete_ = true;
 };
 
 class VariablesContainer : public ftxui::ComponentBase {
@@ -40,6 +44,7 @@ private:
   void AddBox(const std::string& name = "", const std::string& value = "");
   void AddNewOnCondition();
   void RemoveBox(VariableBox* target);
+  void UpdateBoxesState();
   std::vector<std::shared_ptr<VariableBox>> boxes_;
   ftxui::Component container_;
   std::function<void()> on_change_;

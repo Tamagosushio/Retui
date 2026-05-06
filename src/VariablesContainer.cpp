@@ -1,4 +1,5 @@
 #include "VariablesContainer.hpp"
+#include "UIUtils.hpp"
 #include <ftxui/component/component_options.hpp>
 
 namespace retui {
@@ -10,7 +11,7 @@ VariableBox::VariableBox(std::function<void()> on_change, std::function<void(Var
   option.on_change = on_change;
   input_name_ = Input(&name_, "Name", option);
   input_value_ = Input(&value_, "Regex Fragment", option);
-  delete_button_ = Button("DEL", [this, on_delete] { on_delete(this); }, ButtonOption::Animated(Color::Red));
+  delete_button_ = Maybe(Button("DEL", [this, on_delete] { on_delete(this); }, ButtonOption::Animated(Color::Red)), &can_delete_);
   Component internal_container = Container::Horizontal({
     input_name_,
     input_value_,
@@ -20,13 +21,13 @@ VariableBox::VariableBox(std::function<void()> on_change, std::function<void(Var
 }
 
 Element VariableBox::OnRender() {
-  return hbox({
+  return FocusedWindow(title_, hbox({
     input_name_->Render() | size(WIDTH, EQUAL, 15),
     separator(),
     input_value_->Render() | flex,
     separator(),
-    delete_button_->Render()
-  }) | border;
+    delete_button_->Render() | center
+  }), Focused());
 }
 
 bool VariableBox::IsEmpty() const {
@@ -41,11 +42,10 @@ VariablesContainer::VariablesContainer(std::function<void()> on_change)
 }
 
 Element VariablesContainer::OnRender() {
-  return vbox({
-    text("Variables") | center,
-    separator(),
-    container_->Render() | vscroll_indicator | frame | flex
-  }) | border;
+  return FocusedWindow(" Variables ",
+    container_->Render() | vscroll_indicator | frame | flex,
+    Focused()
+  );
 }
 
 std::vector<std::pair<std::string, std::string>> VariablesContainer::GetVariables() const {
@@ -68,6 +68,7 @@ void VariablesContainer::SetVariables(const std::vector<std::pair<std::string, s
     AddBox(pair.first, pair.second);
   }
   AddBox();
+  UpdateBoxesState();
 }
 
 void VariablesContainer::AddBox(const std::string& name, const std::string& value) {
@@ -82,6 +83,7 @@ void VariablesContainer::AddBox(const std::string& name, const std::string& valu
   box->SetValue(value);
   boxes_.push_back(box);
   container_->Add(box);
+  UpdateBoxesState();
 }
 
 void VariablesContainer::AddNewOnCondition() {
@@ -102,6 +104,17 @@ void VariablesContainer::RemoveBox(VariableBox* target) {
   }
   if (boxes_.empty()) {
     AddBox();
+  } else {
+    UpdateBoxesState();
+  }
+}
+
+void VariablesContainer::UpdateBoxesState() {
+  size_t total = boxes_.size();
+  for (size_t i = 0; i < total; ++i) {
+    boxes_[i]->SetTitle(" Variable " + std::to_string(i + 1) + "/" + std::to_string(total) + " ");
+    bool can_delete = !(i == total - 1 && boxes_[i]->IsEmpty());
+    boxes_[i]->SetCanDelete(can_delete);
   }
 }
 
