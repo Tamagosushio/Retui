@@ -70,6 +70,7 @@ public:
   bool Focusable() const override;
   bool IsInputFocused() const;
   std::string GetText() const;
+  std::string GetExpandedRegex() const;
   void SetText(const std::string& text);
   void SetError(const std::string& error);
   void SetExpandedRegex(const std::string& expanded);

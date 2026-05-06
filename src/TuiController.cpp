@@ -233,6 +233,10 @@ std::string RegexContainer::GetText() const {
   return input_regex_string_;
 }
 
+std::string RegexContainer::GetExpandedRegex() const {
+  return expanded_regex_;
+}
+
 void RegexContainer::SetText(const std::string& text) {
   input_regex_string_ = text;
 }
@@ -301,7 +305,7 @@ TuiController::TuiController(RetuiApp* app, AppState* app_state) : app_(app), ap
         vbox({
           regex_container_->Render(),
           variables_container_->Render() | flex,
-        }) | flex,
+        }) | size(WIDTH, EQUAL, Terminal::Size().dimx * 2 / 5),
         separator(),
         test_strings_container_->Render() | flex,
       }) | flex,
@@ -406,7 +410,8 @@ void TuiController::EvaluateBox(TestStringBox* box) {
 
 std::string TuiController::GetFocusedText() const {
   if (regex_container_->IsInputFocused()) {
-    return regex_container_->GetText();
+    std::string expanded = regex_container_->GetExpandedRegex();
+    return expanded.empty() ? regex_container_->GetText() : expanded;
   }
   for (const auto& box : test_strings_container_->GetBoxes()) {
     if (box->IsInputFocused()) {
