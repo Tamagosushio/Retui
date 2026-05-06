@@ -16,6 +16,7 @@ int main(int argc, char* argv[]) {
   screen.Loop(controller);
   app_state.SetMainRegex(controller->GetMainRegexText());
   app_state.SetTestStrings(controller->GetAllTestStrings());
+  app_state.SetVariables(controller->GetAllVariables());
   app_state.Save();
   return 0;
 }

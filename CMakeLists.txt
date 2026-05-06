@@ -47,6 +47,8 @@ add_executable(retui
   src/ClipboardManager.cpp
   src/AppState.cpp
   src/ResetModal.cpp
+  src/VariableManager.cpp
+  src/VariablesContainer.cpp
 )
 
 # ライブラリのリンク

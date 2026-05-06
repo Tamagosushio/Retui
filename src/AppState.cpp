@@ -30,6 +30,14 @@ bool AppState::Load(const std::string& filepath) {
         }
       }
     }
+    if (j.contains("variables") && j["variables"].is_array()) {
+      variables_.clear();
+      for (const auto& item : j["variables"]) {
+        if (item.is_object() && item.contains("name") && item.contains("value") && item["name"].is_string() && item["value"].is_string()) {
+          variables_.push_back({item["name"], item["value"]});
+        }
+      }
+    }
     return true;
   } catch (const json::exception&) {
     return false;
@@ -40,6 +48,11 @@ bool AppState::Save() const {
   json j;
   j["main_regex"] = main_regex_;
   j["test_strings"] = test_strings_;
+  json vars_json = json::array();
+  for (const auto& pair : variables_) {
+    vars_json.push_back({{"name", pair.first}, {"value", pair.second}});
+  }
+  j["variables"] = vars_json;
   std::ofstream file(filepath_);
   if (!file.is_open()) {
     return false;
@@ -51,6 +64,7 @@ bool AppState::Save() const {
 void AppState::Reset() {
   main_regex_.clear();
   test_strings_.clear();
+  variables_.clear();
   if (!filepath_.empty() && std::filesystem::exists(filepath_)) {
     std::filesystem::remove(filepath_);
   }
@@ -70,6 +84,14 @@ std::vector<std::string> AppState::GetTestStrings() const {
 
 void AppState::SetTestStrings(const std::vector<std::string>& test_strings) {
   test_strings_ = test_strings;
+}
+
+std::vector<std::pair<std::string, std::string>> AppState::GetVariables() const {
+  return variables_;
+}
+
+void AppState::SetVariables(const std::vector<std::pair<std::string, std::string>>& variables) {
+  variables_ = variables;
 }
 
 } // namespace retui

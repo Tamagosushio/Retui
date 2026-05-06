@@ -204,12 +204,17 @@ Element RegexContainer::OnRender() {
   Color border_color = Focused() ? Color(Color::Cyan1) : Color(Color::White);
   BorderStyle border_style = Focused() ? HEAVY : LIGHT;
   Decorator title_style = Focused() ? bold : nothing;
+  auto expanded_view = expanded_regex_.empty() ? text("") : vbox({
+    text(" Expanded: ") | bold,
+    paragraph(expanded_regex_) | color(Color::GrayDark),
+    separatorEmpty(),
+  });
   return window(text(" Main Regex ") | title_style, vbox({
     text(" Expression: ") | bold,
     input_regex_->Render() | border,
     separatorEmpty(),
+    expanded_view,
     compile_status,
-    filler(),
   }) | color(Color::White), border_style) | color(border_color);
 }
 
@@ -238,12 +243,19 @@ void RegexContainer::SetError(const std::string& error) {
   else regex_compile_result_ = "Compile Result: " + error;
 }
 
+void RegexContainer::SetExpandedRegex(const std::string& expanded) {
+  expanded_regex_ = expanded;
+}
+
 TuiController::TuiController(RetuiApp* app, AppState* app_state) : app_(app), app_state_(app_state) {
   test_strings_container_ = std::make_shared<TestStringsContainer>(
     [this](TestStringBox* box) { OnTestStringChange(box); }
   );
   regex_container_ = std::make_shared<RegexContainer>(
     [this](std::string regex) { OnRegexChange(regex); }
+  );
+  variables_container_ = std::make_shared<VariablesContainer>(
+    [this]() { OnVariablesChange(); }
   );
   copy_button_ = Button(
     " Copy to Clipboard (Alt+C) ",
@@ -255,15 +267,22 @@ TuiController::TuiController(RetuiApp* app, AppState* app_state) : app_(app), ap
     [this]() { show_reset_modal_ = true; },
     ButtonOption::Animated(Color::RedLight)
   );
-  regex_container_->SetText(app_state_->GetMainRegex());
-  OnRegexChange(app_state_->GetMainRegex());
-  test_strings_container_->InitWithTexts(app_state_->GetTestStrings());
+  if (app_state_) {
+    app_->GetVariableManager().SetVariables(app_state_->GetVariables());
+    variables_container_->SetVariables(app_state_->GetVariables());
+    regex_container_->SetText(app_state_->GetMainRegex());
+    OnRegexChange(app_state_->GetMainRegex());
+    test_strings_container_->InitWithTexts(app_state_->GetTestStrings());
+  }
   for (const auto& box : test_strings_container_->GetBoxes()) {
     EvaluateBox(box.get());
   }
   auto container = Container::Vertical({
     Container::Horizontal({
-      regex_container_,
+      Container::Vertical({
+        regex_container_,
+        variables_container_,
+      }),
       test_strings_container_,
     }),
     Container::Horizontal({
@@ -274,7 +293,10 @@ TuiController::TuiController(RetuiApp* app, AppState* app_state) : app_(app), ap
   auto main_layout = Renderer(container, [this] {
     return vbox({
       hbox({
-        regex_container_->Render() | size(WIDTH, EQUAL, 50),
+        vbox({
+          regex_container_->Render(),
+          variables_container_->Render() | flex,
+        }) | size(WIDTH, EQUAL, 50),
         separator(),
         test_strings_container_->Render() | flex,
       }) | flex,
@@ -316,11 +338,17 @@ bool TuiController::Focusable() const {
 }
 
 void TuiController::OnRegexChange(std::string regex) {
+  if (regex_container_) {
+    regex_container_->SetExpandedRegex(app_->GetLastExpandedRegex());
+  }
   if (test_strings_container_) {
     const auto& boxes = test_strings_container_->GetBoxes();
     if (boxes.empty()) {
       auto result = app_->Evaluate(regex, "");
-      if (regex_container_) regex_container_->SetError(result.error_message);
+      if (regex_container_) {
+        regex_container_->SetError(result.error_message);
+        regex_container_->SetExpandedRegex(app_->GetLastExpandedRegex());
+      }
       return;
     }
     std::vector<std::string> texts;
@@ -331,6 +359,7 @@ void TuiController::OnRegexChange(std::string regex) {
     auto results = app_->EvaluateMultiple(regex, texts);
     if (regex_container_) {
       regex_container_->SetError(results[0].error_message);
+      regex_container_->SetExpandedRegex(app_->GetLastExpandedRegex());
     }
     for (size_t i = 0; i < boxes.size(); ++i) {
       boxes[i]->SetMatchResult(results[i]);
@@ -339,7 +368,15 @@ void TuiController::OnRegexChange(std::string regex) {
     auto result = app_->Evaluate(regex, "");
     if (regex_container_) {
       regex_container_->SetError(result.error_message);
+      regex_container_->SetExpandedRegex(app_->GetLastExpandedRegex());
     }
+  }
+}
+
+void TuiController::OnVariablesChange() {
+  app_->GetVariableManager().SetVariables(variables_container_->GetVariables());
+  if (regex_container_) {
+    OnRegexChange(regex_container_->GetText());
   }
 }
 
@@ -398,11 +435,21 @@ std::vector<std::string> TuiController::GetAllTestStrings() const {
   return texts;
 }
 
+std::vector<std::pair<std::string, std::string>> TuiController::GetAllVariables() const {
+  if (!variables_container_) return {};
+  return variables_container_->GetVariables();
+}
+
 void TuiController::ExecuteReset() {
   app_state_->Reset();
   regex_container_->SetText("");
   regex_container_->SetError("");
+  regex_container_->SetExpandedRegex("");
   test_strings_container_->InitWithTexts({});
+  app_->GetVariableManager().ClearVariables();
+  if (variables_container_) {
+    variables_container_->SetVariables({});
+  }
   ShowMessage(" State reset successfully ", Color::Green);
 }
 

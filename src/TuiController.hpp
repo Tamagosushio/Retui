@@ -13,6 +13,7 @@
 
 #include "RetuiApp.hpp"
 #include "AppState.hpp"
+#include "VariablesContainer.hpp"
 
 namespace retui {
 
@@ -70,10 +71,12 @@ public:
   std::string GetText() const;
   void SetText(const std::string& text);
   void SetError(const std::string& error);
+  void SetExpandedRegex(const std::string& expanded);
 private:
   std::string input_regex_string_;
   Component input_regex_;
   std::string regex_compile_result_ = "Compile Result: None";
+  std::string expanded_regex_ = "";
 };
 
 class TuiController : public ComponentBase {
@@ -83,11 +86,13 @@ public:
   bool Focusable() const override;
   std::string GetMainRegexText() const;
   std::vector<std::string> GetAllTestStrings() const;
+  std::vector<std::pair<std::string, std::string>> GetAllVariables() const;
 
 private:
   void OnRegexChange(std::string regex);
   void OnTestStringChange(TestStringBox* box);
   void EvaluateBox(TestStringBox* box);
+  void OnVariablesChange();
   std::string GetFocusedText() const;
   void ExecuteCopy();
   void ShowMessage(const std::string& text, Color color = Color::White);
@@ -96,6 +101,7 @@ private:
   AppState* app_state_;
   std::shared_ptr<TestStringsContainer> test_strings_container_;
   std::shared_ptr<RegexContainer> regex_container_;
+  std::shared_ptr<VariablesContainer> variables_container_;
   Component copy_button_;
   Component reset_button_;
   bool show_reset_modal_ = false;
