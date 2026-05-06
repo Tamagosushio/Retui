@@ -14,6 +14,7 @@
 #include "RetuiApp.hpp"
 #include "AppState.hpp"
 #include "VariablesContainer.hpp"
+#include "HelpModal.hpp"
 
 namespace retui {
 
@@ -104,8 +105,11 @@ private:
   std::shared_ptr<VariablesContainer> variables_container_;
   Component copy_button_;
   Component reset_button_;
+  Component help_button_;
   bool show_reset_modal_ = false;
   Component reset_modal_component_;
+  bool show_help_modal_ = false;
+  Component help_modal_component_;
   std::string status_message_ = "";
   Color status_message_color_ = Color::White;
 };

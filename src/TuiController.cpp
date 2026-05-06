@@ -267,6 +267,11 @@ TuiController::TuiController(RetuiApp* app, AppState* app_state) : app_(app), ap
     [this]() { show_reset_modal_ = true; },
     ButtonOption::Animated(Color::RedLight)
   );
+  help_button_ = Button(
+    " Help (F1) ",
+    [this]() { show_help_modal_ = true; },
+    ButtonOption::Animated(Color::Yellow)
+  );
   if (app_state_) {
     app_->GetVariableManager().SetVariables(app_state_->GetVariables());
     variables_container_->SetVariables(app_state_->GetVariables());
@@ -286,6 +291,7 @@ TuiController::TuiController(RetuiApp* app, AppState* app_state) : app_(app), ap
       test_strings_container_,
     }),
     Container::Horizontal({
+      help_button_,
       copy_button_,
       reset_button_
     })
@@ -304,6 +310,8 @@ TuiController::TuiController(RetuiApp* app, AppState* app_state) : app_(app), ap
       hbox({
         text(status_message_) | color(status_message_color_),
         filler(),
+        help_button_->Render(),
+        text(" "),
         copy_button_->Render(),
         text(" "),
         reset_button_->Render(),
@@ -317,7 +325,11 @@ TuiController::TuiController(RetuiApp* app, AppState* app_state) : app_(app), ap
     },
     [this] { show_reset_modal_ = false; }
   );
+  help_modal_component_ = std::make_shared<HelpModal>(
+    [this] { show_help_modal_ = false; }
+  );
   main_layout |= Modal(reset_modal_component_, &show_reset_modal_);
+  main_layout |= Modal(help_modal_component_, &show_help_modal_);
   Add(main_layout);
 }
 
@@ -328,6 +340,9 @@ bool TuiController::OnEvent(Event event) {
   else if (event == Event::AltL) event = Event::ArrowRight;
   else if (event == Event::AltC) {
     ExecuteCopy();
+    return true;
+  } else if (event == Event::F1) {
+    show_help_modal_ = true;
     return true;
   }
   return ComponentBase::OnEvent(event);
